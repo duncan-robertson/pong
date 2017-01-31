@@ -38,7 +38,7 @@ MacApp: $(TARGET) $(OBJS)
 	CP $(OSX)/$(MAC_TARGET).icns $(MAC_TARGET).app/Contents/Resources
 else
 MacApp:
-	echo "MacApp is not supported by your system. You must be running OS X"
+	@echo "MacApp is not supported by your system. You must be running OS X"
 endif
 
 $(ODIR)/%.o: $(SDIR)/%.cpp $(ODIR)
