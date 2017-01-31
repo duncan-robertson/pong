@@ -2,8 +2,8 @@ SDIR = src
 ODIR = obj
 RES = shaders
 OSX = osx
-SOURCE = $(wildcard $(SDIR)/*.cc)
-OBJS = $(patsubst $(SDIR)%.cc, $(ODIR)%.o,$(SOURCE))
+SOURCE = $(wildcard $(SDIR)/*.cpp)
+OBJS = $(patsubst $(SDIR)%.cpp, $(ODIR)%.o,$(SOURCE))
 CFLAGS = -Wall
 CC = gcc
 CXX = g++
@@ -17,9 +17,9 @@ ifeq ($(OS),Darwin)
 	ifneq (,$(findstring MacApp,$(MAKECMDGOALS)))
 		CFLAGS += -D MacApp
 		LIBS += -framework CoreFoundation
-		OSX_SOURCE = $(wildcard $(OSX)/*.cc)
+		OSX_SOURCE = $(wildcard $(OSX)/*.cpp)
 		SOURCE += $(OSX_SOURCE)
-		OBJ += $(patsubst $(OSX)%.cc, $(ODIR)%.o,$(OSX_SOURCE))
+		OBJ += $(patsubst $(OSX)%.cpp, $(ODIR)%.o,$(OSX_SOURCE))
 	endif
 else
     LIBS = -lSDL2 -lGL -lGLEW
@@ -41,7 +41,7 @@ MacApp:
 	echo "MacApp is not supported by your system. You must be running OS X"
 endif
 
-$(ODIR)/%.o: $(SDIR)/%.cc $(ODIR)
+$(ODIR)/%.o: $(SDIR)/%.cpp $(ODIR)
 	$(CXX) $(CFLAGS) -c -o $@ $<
 
 $(ODIR):
