@@ -285,9 +285,10 @@ int main(int argc, char* argv[]) {
             //Calculate amount of time to delay
             time_delta = SDL_GetTicks() - time_delta;
 
+            std::cout << "Changes\n";
             //Delay next frame (hard set to 60fps)
-            if(time_delta > 0 && time_delta <= 16)
-                SDL_Delay(16 - time_delta);
+            //if(time_delta > 0 && time_delta <= 16)
+            //    SDL_Delay(16 - time_delta);
         }
     }
     

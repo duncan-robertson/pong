@@ -25,6 +25,10 @@ else
     LIBS = -lSDL2 -lGL -lGLEW
 endif
 
+$(ODIR)/%.o: $(SDIR)/%.cpp
+	@mkdir -p $(ODIR)
+	$(CXX) $(CFLAGS) -c -o $@ $<
+
 $(TARGET): $(OBJS)
 	$(CXX) $(CFLAGS) $^ $(LIBS) -o $@
 
@@ -40,12 +44,6 @@ else
 MacApp:
 	@echo "MacApp is not supported by your system. You must be running OS X"
 endif
-
-$(ODIR)/%.o: $(SDIR)/%.cpp $(ODIR)
-	$(CXX) $(CFLAGS) -c -o $@ $<
-
-$(ODIR):
-	mkdir -p $(ODIR)
 
 clean:
 	rm -rf $(ODIR) $(TARGET) $(MAC_TARGET).app 
