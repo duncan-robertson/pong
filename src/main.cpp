@@ -212,8 +212,7 @@ void gameLoop() {
 
     //Set GL preferences
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
+    glDisable(GL_DEPTH_TEST);
 
     //Init the main render matrices
     glm::mat4 Projection = glm::ortho(-ORTHO_WIDTH, ORTHO_WIDTH, -ORTHO_HEIGHT, ORTHO_HEIGHT, 0.0f, 3.0f);
