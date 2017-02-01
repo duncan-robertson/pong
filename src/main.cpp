@@ -219,7 +219,7 @@ void gameLoop() {
     glm::mat4 View = glm::lookAt(glm::vec3(0,0,1), glm::vec3(0,0,0), glm::vec3(0,1,0));
     
     //Prepare runloop variables
-    unsigned int time_delta, no_exit = 1;
+    unsigned int time_delta, game_delay, no_exit = 1;
     SDL_Event e;
     const Uint8 *keys = SDL_GetKeyboardState(NULL);
 
@@ -244,6 +244,9 @@ void gameLoop() {
     while(no_exit) {
         //Start timing the frame
         time_delta = SDL_GetTicks();
+        if(game_delay && time_delta > game_delay) {
+            game_delay = 0;
+        }
 
         //Manage events
         while(SDL_PollEvent(&e)){
@@ -262,6 +265,7 @@ void gameLoop() {
         if(no_exit){
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+            //Allow paddle to still move even if game is delayed
             if(keys[SDL_SCANCODE_UP] && !keys[SDL_SCANCODE_DOWN]){
                 paddle1.moveUp();
             }
@@ -272,23 +276,30 @@ void gameLoop() {
             if(collision)
                 wallBounce(collision, &paddle1);
 
-            basicAi(ball, &paddle2);
-            collision = wallCollision(paddle2);
-            if(collision)
-                wallBounce(collision, &paddle2);
+            if(!game_delay) {
+                basicAi(ball, &paddle2);
+                collision = wallCollision(paddle2);
+                if(collision)
+                    wallBounce(collision, &paddle2);
 
-            ball.move();
-            collision = paddleCollision(paddle1, ball);
-            if(collision)
-                paddleBounce(paddle1, &ball);
+                ball.move();
+                collision = paddleCollision(paddle1, ball);
+                if(collision)
+                    paddleBounce(paddle1, &ball);
 
-            collision = paddleCollision(paddle2, ball);
-            if(collision)
-                paddleBounce(paddle2, &ball);
+                collision = paddleCollision(paddle2, ball);
+                if(collision)
+                    paddleBounce(paddle2, &ball);
 
-            collision = wallCollision(ball);
-            if(collision) {
-                wallBounce(collision, &ball);
+                collision = wallCollision(ball);
+                if(collision & 0x01 || collision & 0x02) {
+                    ball.x(-ball.width()/2);
+                    ball.y(-ball.height()/2);
+                    game_delay = SDL_GetTicks()+1000;
+                }
+                else if(collision) {
+                    wallBounce(collision, &ball);
+                }
             }
 
             //Render all objects
