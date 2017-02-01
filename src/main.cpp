@@ -1,10 +1,8 @@
-#include <stdio.h>
 #include <stdlib.h>
 
 #include <SDL2/SDL.h>
 
 #include <GL/glew.h>
-
 #ifdef __APPLE__
     #include <gl.h>
 #else
@@ -17,9 +15,7 @@
 #include <glm/gtx/transform.hpp>
 
 #include <iostream>
-#include <string>
 #include <vector>
-#include <fstream>
 
 #include "shader.h"
 #include "image_loader.h"
@@ -33,9 +29,8 @@ const int SCREEN_HEIGHT = 720;
 const float ORTHO_HEIGHT = 500;
 const float ORTHO_WIDTH = ((float)SCREEN_WIDTH/SCREEN_HEIGHT)*ORTHO_HEIGHT;
 
-SDL_Window* window;
+SDL_Window *window;
 SDL_GLContext context;
-const Uint8 *keys;
 
 int init() {
     SDL_Init(SDL_INIT_VIDEO);
@@ -67,7 +62,16 @@ int init() {
         return 1;
     }
 
+#if defined(__APPLE__) && defined(MacApp)
+    setResourcePath();
+#endif
+
     return 0;
+}
+
+void cleanup() {
+    SDL_DestroyWindow(window);
+    SDL_Quit();
 }
 
 void basicAi(const Game::Ball &ball, Game::Paddle *paddle) {
@@ -175,58 +179,70 @@ void paddleBounce(const Game::Paddle &paddle, Game::Ball *ball) {
     }
 }
 
-int main(int argc, char* argv[]) {
-    //Initializae SDL and OpenGL
+//Return pointer is allocated through malloc
+//Free pointer only after the related values have been cleared from the vector
+Game::Rect* addBackground(std::vector<Game::Rect*> *objects) {
+    float section = (ORTHO_HEIGHT*2)/30;
+    float offset = section/2;
+    float height = section*2;
+    float width = 10;
+    unsigned int quantity = 10;
+    
+    Game::Rect *out  = static_cast<Game::Rect*>(malloc(sizeof(Game::Rect)*quantity));
 
-    init();
+    for(unsigned int i=0; i<quantity; i++) {
+        new(out+i) Game::Rect(-(width/2), i * (height+section) - ORTHO_HEIGHT + offset, width, height);
+        objects->push_back(out+i);
+    }
 
-    //Declare and set graphical variables
+    return out;
+}
+
+void gameLoop() {
+    //Init VertexArray
     GLuint VertexArrayID;
     glGenVertexArrays(1, &VertexArrayID);
     glBindVertexArray(VertexArrayID);
 
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
-
-#if defined(__APPLE__) && defined(MacApp)
-    setResourcePath();
-#endif
-
+    //Init Shaders
     GLuint program1 = LoadShaders("shaders/vertex.glsl", "shaders/fragment.glsl");
-
     GLuint MatrixID = glGetUniformLocation(program1, "MVP");
-    //GLuint program1 = LoadShaders("git/pong/Pong.app/Contents/Resources/shaders/vertex.glsl", "git/pong/Pong.app/Contents/Resources/shaders/fragment.glsl");
-    //GLuint MatrixID = glGetUniformLocation(program1, "MVP");
-
-
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
 
-    //Prepare the rendering view
+    //Set GL preferences
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+
+    //Init the main render matrices
     glm::mat4 Projection = glm::ortho(-ORTHO_WIDTH, ORTHO_WIDTH, -ORTHO_HEIGHT, ORTHO_HEIGHT, 0.0f, 3.0f);
     glm::mat4 View = glm::lookAt(glm::vec3(0,0,1), glm::vec3(0,0,0), glm::vec3(0,1,0));
     
     //Prepare runloop variables
-    unsigned int time_delta;
-    int run_loop = 1;
+    unsigned int time_delta, no_exit = 1;
     SDL_Event e;
-    keys = SDL_GetKeyboardState(NULL);
+    const Uint8 *keys = SDL_GetKeyboardState(NULL);
 
+    //Vector containing everything to be drawn
+    std::vector<Game::Rect*> objects;
+
+    //Manually allocated, must be freed
+    Game::Rect *background = addBackground(&objects);
+
+    //Init all game objects
     Game::Ball ball(-15, -15, 30, 30, 17, 17);
     Game::Paddle paddle1(-ORTHO_WIDTH + 50, -100, 30, 200, 15);
     Game::Paddle paddle2(paddle1);
     paddle2.x(ORTHO_WIDTH - 50 - paddle2.width());
 
-    std::vector<Game::Rect*> objects;
     objects.push_back(static_cast<Game::Rect*>(&ball));
     objects.push_back(static_cast<Game::Rect*>(&paddle1));
     objects.push_back(static_cast<Game::Rect*>(&paddle2));
 
     unsigned char collision;
     
-    while(run_loop) {
+    while(no_exit) {
         //Start timing the frame
         time_delta = SDL_GetTicks();
 
@@ -234,14 +250,17 @@ int main(int argc, char* argv[]) {
         while(SDL_PollEvent(&e)){
             switch(e.type){
                 case SDL_QUIT:
-                    run_loop = 0;
+                    no_exit = 0;
                     break;
                 default:
                     break;
             }
         }
 
-        if(run_loop){
+        if(keys[SDL_SCANCODE_ESCAPE] || keys[SDL_SCANCODE_Q])
+            no_exit = 0;
+
+        if(no_exit){
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             if(keys[SDL_SCANCODE_UP] && !keys[SDL_SCANCODE_DOWN]){
@@ -285,22 +304,26 @@ int main(int argc, char* argv[]) {
             //Calculate amount of time to delay
             time_delta = SDL_GetTicks() - time_delta;
 
-            std::cout << "Changes\n";
             //Delay next frame (hard set to 60fps)
             //if(time_delta > 0 && time_delta <= 16)
             //    SDL_Delay(16 - time_delta);
         }
     }
-    
-    //Cleanup
+    objects.clear();
+    free(background);
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
 
     glDeleteProgram(program1);
     glDeleteVertexArrays(1, &VertexArrayID);
+}
 
-    SDL_DestroyWindow(window);
+int main(int argc, char* argv[]) {
+    //Initializae SDL and OpenGL
+    init();
 
-    SDL_Quit();
+    gameLoop();
+    
+    cleanup();
     return 0;
 }

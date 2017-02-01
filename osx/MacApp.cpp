@@ -1,4 +1,6 @@
 #ifdef __APPLE__
+#include <CoreFoundation/CoreFoundation.h>
+#include <iostream>
 
 #include "MacApp.h"
 

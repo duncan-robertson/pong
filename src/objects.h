@@ -1,17 +1,11 @@
 #ifndef OBJECTS_H
 #define OBJECTS_H
 
-#include <GL/glew.h>
-
 #ifdef __APPLE__
     #include <gl.h>
 #else
     #include <GL/gl.h>
 #endif
-
-#define GLM_FORCE_RADIANS
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 
 namespace Game {
     class Rect {
