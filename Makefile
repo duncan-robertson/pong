@@ -1,6 +1,6 @@
 SDIR = src
 ODIR = obj
-RES = shaders
+RES = shaders textures
 OSX = osx
 SOURCE = $(wildcard $(SDIR)/*.cpp)
 OBJS = $(patsubst $(SDIR)%.cpp, $(ODIR)%.o,$(SOURCE))
