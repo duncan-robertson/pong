@@ -2,3 +2,4 @@ obj/
 pong
 Pong.app/
 *.swp
+*.DS_Store
