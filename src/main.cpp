@@ -83,7 +83,7 @@ int init() {
 void loadFont(Font *f) {
     f->texture = loadAlphabet();
     if(f->texture) {
-        f->height_ratio = 7/5;
+        f->height_ratio = 7.0f/5.0f;
         const GLfloat &height_ratio = f->height_ratio;
         GLfloat vertex_array[18] = {
             -0.5f, 0.5f*height_ratio, 0.0f,
@@ -406,84 +406,23 @@ void gameLoop() {
     //Set GL preferences
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glDisable(GL_DEPTH_TEST);
-
-    //Init the main render matrices
     
     //Prepare runloop variables
-    unsigned int time_delta, game_delay, no_exit = 1;
+    unsigned int time_delta, game_delay = 0, no_exit = 1;
     SDL_Event e;
     const Uint8 *keys = SDL_GetKeyboardState(NULL);
 
-    //TESTING
+    //Load font
     Font game_font;
     loadFont(&game_font);
-    
-#define X {255,100,200,255}
-#define O {0, 0, 0, 0}
-    GLubyte data[][4] = {
-        X, X, X, X,
-        X, O, O, X,
-        X, X, X, X,
-        X, O, O, X,
-        X, O, O, X
-    };
-#undef X
-#undef O
-    GLuint testTex;
-    glGenTextures(1, &testTex);
-    glBindTexture(GL_TEXTURE_2D, testTex);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 4, 5, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    if(!game_font.texture) {
+        std::cout << "Error loading font\n";
+        return;
+    }
+    glBindTexture(GL_TEXTURE_2D, game_font.texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glGenerateMipmap(GL_TEXTURE_2D);
-
-#define TL -58,  28, 0
-#define TR  0,  28, 0
-#define BL -58, -0, 0
-#define BR  0, -0, 0
-    const GLfloat test_quad_vertex[] = {
-        TL, BL, TR,
-        BL, BR, TR
-    };
-#undef TL
-#undef TR
-#undef BL
-#undef BR
-#define TL 0, 0
-#define TR 0.10, 0
-#define BL 0, 0.25
-#define BR 0.10, 0.25
-    const GLfloat test_quad_uv[] = {
-        TL, BL, TR,
-        BL, BR, TR
-    };
-#undef TL
-#undef TR
-#undef BL
-#undef BR
-
-    GLuint vertex_test, uv_test;
-    glGenBuffers(1, &vertex_test);
-    glGenBuffers(1, &uv_test);
-
-    glBindBuffer(GL_ARRAY_BUFFER, vertex_test);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(test_quad_vertex), test_quad_vertex, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ARRAY_BUFFER, uv_test);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(test_quad_uv), test_quad_uv, GL_STATIC_DRAW);
-
-    GLuint alphabet_texture = loadAlphabet();
-
-    if(!alphabet_texture)
-        std::cout << "Error loading alphabet texture\n";
-    else {
-        glBindTexture(GL_TEXTURE_2D, alphabet_texture);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    //END TESTING
 
     //Vector containing everything to be drawn
     std::vector<Game::Rect*> objects;
