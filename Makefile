@@ -34,16 +34,17 @@ $(TARGET): $(OBJS)
 
 ifeq ($(OS),Darwin)
 MacApp: $(TARGET) $(OBJS)
-	mkdir -p $(MAC_TARGET).app/Contents/MacOS
-	mkdir $(MAC_TARGET).app/Contents/Resources
-	mv $(TARGET) $(MAC_TARGET).app/Contents/MacOS
-	cp -R $(RES) $(MAC_TARGET).app/Contents/Resources
-	cp $(OSX)/Info.plist $(MAC_TARGET).app/Contents
-	CP $(OSX)/$(MAC_TARGET).icns $(MAC_TARGET).app/Contents/Resources
+	@mkdir -p $(MAC_TARGET).app/Contents/MacOS
+	@mkdir -p $(MAC_TARGET).app/Contents/Resources
+	@mv $(TARGET) $(MAC_TARGET).app/Contents/MacOS
+	@cp -R $(RES) $(MAC_TARGET).app/Contents/Resources
+	@cp $(OSX)/Info.plist $(MAC_TARGET).app/Contents
+	@cp $(OSX)/$(MAC_TARGET).icns $(MAC_TARGET).app/Contents/Resources
+	@echo $(MAC_TARGET).app created
 else
 MacApp:
 	@echo "MacApp is not supported by your system. You must be running OS X"
 endif
 
 clean:
-	rm -rf $(ODIR) $(TARGET) $(MAC_TARGET).app 
+	@rm -rf $(ODIR) $(TARGET) $(MAC_TARGET).app 
