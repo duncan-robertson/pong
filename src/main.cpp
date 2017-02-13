@@ -17,6 +17,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <cmath>
 
 #include "shader.h"
 #include "objects.h"
@@ -33,6 +34,11 @@ typedef struct Font {
     GLuint uv_buffers[36];
 } Font;
 
+typedef struct WindowContext {
+    SDL_Window *window;
+    SDL_GLContext context;
+} WindowContext;
+
 const int SCREEN_WIDTH = 1280;
 const int SCREEN_HEIGHT = 720;
 const float ORTHO_HEIGHT = 500;
@@ -40,10 +46,9 @@ const float ORTHO_WIDTH = ((float)SCREEN_WIDTH/SCREEN_HEIGHT)*ORTHO_HEIGHT;
 const glm::mat4 Projection = glm::ortho(-ORTHO_WIDTH, ORTHO_WIDTH, -ORTHO_HEIGHT, ORTHO_HEIGHT, 0.0f, 3.0f);
 const glm::mat4 View = glm::lookAt(glm::vec3(0,0,1), glm::vec3(0,0,0), glm::vec3(0,1,0));
 
-SDL_Window *window;
-SDL_GLContext context;
-
-int init() {
+unsigned char init(WindowContext *win_context) {
+    SDL_Window *window;
+    SDL_GLContext context;
     SDL_Init(SDL_INIT_VIDEO);
 
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
@@ -76,6 +81,9 @@ int init() {
 #if defined(__APPLE__) && defined(MacApp)
     setResourcePath();
 #endif
+
+    win_context->window = window;
+    win_context->context = context;
 
     return 0;
 }
@@ -125,6 +133,7 @@ void loadFont(Font *f) {
 
 void graphical_print(const Font &f, const GLfloat &x, const GLfloat &y, const GLfloat &font_width, const GLuint &MatrixID, const std::string &text) {
     GLfloat offset = (font_width/2);
+    GLfloat height_offset = offset*(7.0f/5);
     GLfloat letter_spacing = font_width*1.15f;
     char current_letter;
     glm::mat4 Model;
@@ -255,7 +264,7 @@ void graphical_print(const Font &f, const GLfloat &x, const GLfloat &y, const GL
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
             Model = glm::mat4();
-            Model = glm::translate(Model, glm::vec3(x+offset+(i*letter_spacing), y+offset, 0.0f));
+            Model = glm::translate(Model, glm::vec3(x+offset+(i*letter_spacing), y+height_offset, 0.0f));
             Model = glm::scale(Model, glm::vec3(font_width, font_width, 0.0f));
             glm::mat4 MVP = Projection * View * Model;
             glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
@@ -265,13 +274,13 @@ void graphical_print(const Font &f, const GLfloat &x, const GLfloat &y, const GL
     }
 }
 
-void cleanup() {
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+void cleanup(WindowContext *win_context) {
+    SDL_GL_DeleteContext(win_context->context);
+    SDL_DestroyWindow(win_context->window);
 }
 
 void basicAi(const Game::Ball &ball, Game::Paddle *paddle) {
-    if(ball.x_speed() > 0) {
+    if(paddle->x() * ball.x_speed() > 0) {
         GLfloat ball_center = ball.y() + (ball.height()/2);
         GLfloat paddle_center = paddle->y() + (paddle->height()/2);
         if(ball_center < paddle_center) {
@@ -390,7 +399,7 @@ Game::Rect* addBackground(std::vector<Game::Rect*> *objects) {
     return out;
 }
 
-void gameLoop() {
+void gameLoop(SDL_Window *window) {
     //Init VertexArray
     GLuint VertexArrayID;
     glGenVertexArrays(1, &VertexArrayID);
@@ -403,12 +412,15 @@ void gameLoop() {
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
 
-    //Set GL preferences
+    //Set GL values
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glDisable(GL_DEPTH_TEST);
     
     //Prepare runloop variables
-    unsigned int time_delta, game_delay = 0, no_exit = 1;
+    unsigned int time_delta, game_delay = 0;
+    unsigned char collision, p1_score = 0, p2_score = 0, 
+                  game_start = 0, pause = 0, space_down = 0,
+                  no_exit = 1, game_over = 0;
     SDL_Event e;
     const Uint8 *keys = SDL_GetKeyboardState(NULL);
 
@@ -439,11 +451,11 @@ void gameLoop() {
     objects.push_back(static_cast<Game::Rect*>(&ball));
     objects.push_back(static_cast<Game::Rect*>(&paddle1));
     objects.push_back(static_cast<Game::Rect*>(&paddle2));
-
-    unsigned char collision;
-    unsigned char p1_score = 0, p2_score = 0;
     
     while(no_exit) {
+        if(time_delta && game_delay && pause) {
+            game_delay += SDL_GetTicks()-time_delta;
+        }
         //Start timing the frame
         time_delta = SDL_GetTicks();
         if(game_delay && time_delta > game_delay) {
@@ -464,9 +476,68 @@ void gameLoop() {
         if(keys[SDL_SCANCODE_ESCAPE] || keys[SDL_SCANCODE_Q])
             no_exit = 0;
 
-        if(no_exit){
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        if(keys[SDL_SCANCODE_SPACE] && !space_down) {
+            space_down = 0x01;
+        }
+        else if(!keys[SDL_SCANCODE_SPACE] && space_down) {
+            space_down = 0;
+        }
 
+        if(game_start && (space_down & 0x01)) {
+            pause ^= 0x01;
+            space_down++;
+        }
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        if(game_over) {
+            glUseProgram(program2);
+            if(game_over == 1) {
+                graphical_print(game_font, -((100*6*1.15f)+100)/2, ((-7.0f/5)*100)/2, 100, MatrixID, "you win");
+            }
+            else {
+                graphical_print(game_font, -((100*7*1.15f))/2, ((-7.0f/5)*100)/2, 100, MatrixID, "you lose");
+            }
+
+            graphical_print(game_font, -((50*9*1.15))/2, -160, 50, MatrixID, "play again");
+            graphical_print(game_font, -((50*10*1.15f)+50)/2, -250, 50, MatrixID, "press space");
+
+            if(space_down & 0x01) {
+                pause = 0;
+                game_over = 0;
+                game_start = 1;
+                p1_score = 0;
+                p2_score = 0;
+                ball.x(-ball.width()/2);
+                ball.y(-ball.height()/2);
+                game_delay = SDL_GetTicks()+1000;
+                space_down++;
+            }
+        }
+        else if(pause) {
+            glUseProgram(program2);
+            graphical_print(game_font, -((150*4*1.15f)+150)/2, ((-7.0f/5)*150)/2, 150, MatrixID, "pause");
+        }
+        else if(!game_start) {
+            glUseProgram(program2);
+            graphical_print(game_font, -((200*3*1.15f)+200)/2, ((-7.0f/5)*200)/2, 200, MatrixID, "pong");
+            graphical_print(game_font, -((50*10*1.15f)+50)/2, -250, 50, MatrixID, "press space");
+
+            basicAi(ball, &paddle1);
+            collision = wallCollision(paddle1);
+            if(collision)
+                wallBounce(collision, &paddle1);
+
+            if(space_down & 0x01) {
+                game_start = 1;
+                p1_score = 0;
+                p2_score = 0;
+                ball.x(-ball.width()/2);
+                ball.y(-ball.height()/2);
+                game_delay = SDL_GetTicks()+1000;
+                space_down++;
+            }
+        }
+        else if(no_exit){
             //Allow paddle to still move even if game is delayed
             if(keys[SDL_SCANCODE_UP] && !keys[SDL_SCANCODE_DOWN]){
                 paddle1.moveUp();
@@ -477,63 +548,73 @@ void gameLoop() {
             collision = wallCollision(paddle1);
             if(collision)
                 wallBounce(collision, &paddle1);
-
-            if(!game_delay) {
-                basicAi(ball, &paddle2);
-                collision = wallCollision(paddle2);
-                if(collision)
-                    wallBounce(collision, &paddle2);
-
-                ball.move();
-                collision = paddleCollision(paddle1, ball);
-                if(collision)
-                    paddleBounce(paddle1, &ball);
-
-                collision = paddleCollision(paddle2, ball);
-                if(collision)
-                    paddleBounce(paddle2, &ball);
-
-                collision = wallCollision(ball);
-                if(collision & 0x01) {
-                    p2_score++;
-                    if(p2_score > 9)
-                        p2_score = 0;
-                    ball.x(-ball.width()/2);
-                    ball.y(-ball.height()/2);
-                    game_delay = SDL_GetTicks()+1000;
-                }
-                else if (collision & 0x02) {
-                    p1_score++;
-                    if(p1_score > 9)
-                        p1_score = 0;
-                    ball.x(-ball.width()/2);
-                    ball.y(-ball.height()/2);
-                    game_delay = SDL_GetTicks()+1000;
-                }
-                else if(collision) {
-                    wallBounce(collision, &ball);
-                }
-            }
-
-            glUseProgram(program2);
-            graphical_print(game_font, -250, 300, 150, MatrixID, std::to_string(p1_score));
-            graphical_print(game_font, 100, 300, 150, MatrixID, std::to_string(p2_score));
-
-            glUseProgram(program1);
-            for(unsigned int i = 0; i<objects.size(); i++) {
-                objects[i]->draw(Projection, View, MatrixID);
-            }
-
-            //Swap
-            SDL_GL_SwapWindow(window);
-
-            //Calculate amount of time to delay
-            time_delta = SDL_GetTicks() - time_delta;
-
-            //Delay next frame (hard set to 60fps)
-            //if(time_delta > 0 && time_delta <= 16)
-            //    SDL_Delay(16 - time_delta);
         }
+
+        if(!game_delay && !pause) {
+            basicAi(ball, &paddle2);
+            collision = wallCollision(paddle2);
+            if(collision)
+                wallBounce(collision, &paddle2);
+
+            ball.move();
+            collision = paddleCollision(paddle1, ball);
+            if(collision)
+                paddleBounce(paddle1, &ball);
+
+            collision = paddleCollision(paddle2, ball);
+            if(collision)
+                paddleBounce(paddle2, &ball);
+
+            collision = wallCollision(ball);
+            if(collision & 0x01) {
+                p2_score++;
+                if(p2_score > 9) {
+                    if(!game_start)
+                        p2_score = 0;
+                    else {
+                        game_over = 2;
+                        pause = 1;
+                        game_start = 0;
+                    }
+                }
+                ball.x(-ball.width()/2);
+                ball.y(-ball.height()/2);
+                game_delay = SDL_GetTicks()+1000;
+            }
+            else if (collision & 0x02) {
+                p1_score++;
+                if(p1_score > 9) {
+                    if(!game_start)
+                        p1_score = 0;
+                    else {
+                        game_over = 1;
+                        pause = 1;
+                        game_start = 0;
+                    }
+                }
+                ball.x(-ball.width()/2);
+                ball.y(-ball.height()/2);
+                game_delay = SDL_GetTicks()+1000;
+            }
+            else if(collision) {
+                wallBounce(collision, &ball);
+            }
+        }
+
+        glUseProgram(program2);
+        if(p1_score > 9) 
+            graphical_print(game_font, -250 - (150*1.15f), 250, 150, MatrixID, std::to_string(p1_score));
+        else
+            graphical_print(game_font, -250, 250, 150, MatrixID, std::to_string(p1_score));
+
+        graphical_print(game_font, 100, 250, 150, MatrixID, std::to_string(p2_score));
+
+        glUseProgram(program1);
+        for(unsigned int i = 0; i<objects.size(); i++) {
+            objects[i]->draw(Projection, View, MatrixID);
+        }
+
+        SDL_GL_SwapWindow(window);
     }
     objects.clear();
     free(background);
@@ -545,11 +626,20 @@ void gameLoop() {
 }
 
 int main(int argc, char* argv[]) {
-    //Initialize SDL and OpenGL
-    init();
+    WindowContext primary;
 
-    gameLoop();
-    
-    cleanup();
+    if(init(&primary)) {
+        std::cout << "Fatal initialization error. Aborting\n";
+    }
+    else {
+        SDL_Window *window = primary.window;
+
+        gameLoop(window);
+        
+        cleanup(&primary);
+    }
+
+    SDL_Quit();
+
     return 0;
 }
