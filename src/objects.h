@@ -49,9 +49,15 @@ namespace Game {
             void x_speed(const GLfloat &x_speed);
             GLfloat y_speed(void) const;
             void y_speed(const GLfloat &y_speed);
+            GLfloat origin_x_speed(void) const;
+            void origin_x_speed(const GLfloat &origin_x_speed);
+            GLfloat origin_y_speed(void) const;
+            void origin_y_speed(const GLfloat &origin_y_speed);
+            void init_speed(const GLfloat &origin_x_speed, const GLfloat &origin_y_speed);
+            void speed_reset(void);
 
         private:
-            GLfloat x_speed_, y_speed_;
+            GLfloat x_speed_, y_speed_, origin_x_speed_, origin_y_speed_;
     };
 
     class Paddle: public Rect {

@@ -118,11 +118,18 @@ namespace Game {
 
     Ball::Ball(const GLfloat &x, const GLfloat &y, const GLfloat &width, 
             const GLfloat &height): Rect(x, y, width, height)
-    {}
+    {
+        origin_x_speed_ = 0;
+        origin_y_speed_ = 0;
+        x_speed_ = 0;
+        y_speed_ = 0;
+    }
 
     Ball::Ball(const GLfloat &x, const GLfloat &y, const GLfloat &width,
             const GLfloat &height, const GLfloat &x_speed, const GLfloat &y_speed
             ): Rect(x, y, width, height) {
+        origin_x_speed_ = x_speed;
+        origin_y_speed_ = y_speed;
         x_speed_ = x_speed;
         y_speed_ = y_speed;
     }
@@ -151,6 +158,34 @@ namespace Game {
 
     void Ball::y_speed(const GLfloat &y_speed) {
         y_speed_ = y_speed;
+    }
+
+    GLfloat Ball::origin_x_speed(void) const {
+        return origin_x_speed_;
+    }
+
+    void Ball::origin_x_speed(const GLfloat &origin_x_speed) {
+        origin_x_speed_ = origin_x_speed;
+    }
+
+    GLfloat Ball::origin_y_speed(void) const {
+        return origin_y_speed_;
+    }
+
+    void Ball::origin_y_speed(const GLfloat &origin_y_speed) {
+        origin_y_speed_ = origin_y_speed;
+    }
+
+    void Ball::init_speed(const GLfloat &origin_x_speed, const GLfloat &origin_y_speed) {
+        origin_x_speed_ = origin_x_speed;
+        origin_y_speed_ = origin_y_speed;
+        x_speed_ = origin_x_speed_;
+        y_speed_ = origin_y_speed_;
+    }
+
+    void Ball::speed_reset(void) {
+        x_speed_ = origin_x_speed_;
+        y_speed_ = origin_y_speed_;
     }
 
     Paddle::Paddle(const GLfloat &x, const GLfloat &y, const GLfloat &width, 

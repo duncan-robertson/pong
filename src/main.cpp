@@ -111,18 +111,18 @@ void loadFont(Font *f) {
             width_offset = i%10;
             height_offset = i/10;
 
-            uv_array[0] = (0.10f * width_offset) + 0.001f;
-            uv_array[1] = (0.25f * height_offset) + 0.001f;;
-            uv_array[2] = (0.10f * width_offset) + 0.001f;
-            uv_array[3] = (0.25f + (0.25f * height_offset)) - 0.001f;
-            uv_array[4] = (0.10f + (0.10f *  width_offset)) - 0.001f;
-            uv_array[5] = (0.25f * height_offset) + 0.001f;
-            uv_array[6] = (0.10f * width_offset) + 0.001f;
-            uv_array[7] = (0.25f + (0.25f * height_offset)) - 0.001f;
-            uv_array[8] = (0.10f + (0.10f * width_offset)) - 0.001f;
-            uv_array[9] = (0.25f + (0.25f * height_offset)) - 0.001f;
-            uv_array[10] = (0.10f + (0.10f * width_offset)) - 0.001f;
-            uv_array[11] = (0.25f * height_offset) + 0.001f;
+            uv_array[0] = (0.10f * width_offset) + 0.002f;
+            uv_array[1] = (0.25f * height_offset) + 0.002f;;
+            uv_array[2] = (0.10f * width_offset) + 0.002f;
+            uv_array[3] = (0.25f + (0.25f * height_offset)) - 0.002f;
+            uv_array[4] = (0.10f + (0.10f *  width_offset)) - 0.002f;
+            uv_array[5] = (0.25f * height_offset) + 0.002f;
+            uv_array[6] = (0.10f * width_offset) + 0.002f;
+            uv_array[7] = (0.25f + (0.25f * height_offset)) - 0.002f;
+            uv_array[8] = (0.10f + (0.10f * width_offset)) - 0.002f;
+            uv_array[9] = (0.25f + (0.25f * height_offset)) - 0.002f;
+            uv_array[10] = (0.10f + (0.10f * width_offset)) - 0.002f;
+            uv_array[11] = (0.25f * height_offset) + 0.002f;
 
             glGenBuffers(1, &(f->uv_buffers[i]));
             glBindBuffer(GL_ARRAY_BUFFER, f->uv_buffers[i]);
@@ -356,27 +356,71 @@ void wallBounce(const unsigned char &collision, Game::Paddle *paddle) {
 }
 
 unsigned char paddleCollision(const Game::Paddle &paddle, const Game::Ball &ball) {
+    unsigned char out;
     if(ball.x() < paddle.x() + paddle.width() &&
             ball.x() + ball.width() > paddle.x() &&
             ball.y()  < paddle.y() + paddle.height() &&
             ball.y() + ball.height() > paddle.y()) {
-        return 0x01;
-    }
-    else {
-        return 0;
-    }
-}
-
-void paddleBounce(const Game::Paddle &paddle, Game::Ball *ball) {
-    if(ball && ball->x_speed() != 0) {
-        if(ball->x_speed() < 0) {
-            ball->x(paddle.x() + paddle.width() + (ball->x() - paddle.x() + paddle.width()));
-            ball->x_speed(std::abs(ball->x_speed()));
+        if(ball.y() + ball.height() > paddle.y() + paddle.height()) {
+            out = 0x02;
+        }
+        else if(ball.y() < paddle.y()) {
+            out = 0x03;
+        }
+        else if(ball.y() > paddle.y() + (paddle.height()/2) + (ball.height()/2)) {
+            out = 0x04;
+        }
+        else if(ball.y() + ball.height() < paddle.y() + (paddle.height()/2) - (ball.height()/2)) {
+            out = 0x05;
         }
         else {
-            ball->x(paddle.x() - ball->width() - (ball->x() + ball->width() - paddle.x()));
-            ball->x_speed(-std::abs(ball->x_speed()));
+            out = 0x01;
         }
+    }
+    else {
+        out = 0;
+    }
+    return out;
+}
+
+void paddleBounce(const unsigned char &type, const Game::Paddle &paddle, Game::Ball *ball) {
+    assert(ball);
+
+    if(ball->x_speed() < 0) {
+        ball->x(paddle.x() + paddle.width() + (ball->x() - paddle.x() + paddle.width()));
+    }
+    else {
+        ball->x(paddle.x() - ball->width() - (ball->x() + ball->width() - paddle.x()));
+    }
+
+    switch(type) {
+        case 0x02:
+            ball->y_speed(std::abs(ball->y_speed()) * 1.15f);
+            ball->x_speed(ball->x_speed() * -1.10f);
+            break;
+        case 0x03:
+            ball->y_speed(-std::abs(ball->y_speed()) * 1.15f);
+            ball->x_speed(ball->x_speed() * -1.10f);
+            break;
+        case 0x04:
+            ball->y_speed(std::abs(ball->y_speed()) * 1.10f);
+            ball->x_speed(ball->x_speed() * -1.05f);
+            break;
+        case 0x05:
+            ball->y_speed(-std::abs(ball->y_speed()) * 1.10f);
+            ball->x_speed(ball->x_speed() * -1.05f);
+            break;
+        default:
+            ball->x_speed(ball->x_speed() * -0.95f);
+            if(std::abs(ball->x_speed()) < std::abs(ball->origin_x_speed())) {
+                if(ball->x_speed() < 0) {
+                    ball->x_speed(-ball->origin_x_speed());
+                }
+                else {
+                    ball->x_speed(ball->origin_x_speed());
+                }
+            }
+            break;
     }
 }
 
@@ -444,7 +488,7 @@ void gameLoop(SDL_Window *window) {
 
     //Init all game objects
     Game::Ball ball(-15, -15, 30, 30, 17, 17);
-    Game::Paddle paddle1(-ORTHO_WIDTH + 50, -100, 30, 200, 15);
+    Game::Paddle paddle1(-ORTHO_WIDTH + 50, -100, 30, 200, 30);
     Game::Paddle paddle2(paddle1);
     paddle2.x(ORTHO_WIDTH - 50 - paddle2.width());
 
@@ -509,6 +553,7 @@ void gameLoop(SDL_Window *window) {
                 p2_score = 0;
                 ball.x(-ball.width()/2);
                 ball.y(-ball.height()/2);
+                ball.speed_reset();
                 game_delay = SDL_GetTicks()+1000;
                 space_down++;
             }
@@ -533,6 +578,7 @@ void gameLoop(SDL_Window *window) {
                 p2_score = 0;
                 ball.x(-ball.width()/2);
                 ball.y(-ball.height()/2);
+                ball.speed_reset();
                 game_delay = SDL_GetTicks()+1000;
                 space_down++;
             }
@@ -559,11 +605,11 @@ void gameLoop(SDL_Window *window) {
             ball.move();
             collision = paddleCollision(paddle1, ball);
             if(collision)
-                paddleBounce(paddle1, &ball);
+                paddleBounce(collision, paddle1, &ball);
 
             collision = paddleCollision(paddle2, ball);
             if(collision)
-                paddleBounce(paddle2, &ball);
+                paddleBounce(collision, paddle2, &ball);
 
             collision = wallCollision(ball);
             if(collision & 0x01) {
@@ -579,6 +625,7 @@ void gameLoop(SDL_Window *window) {
                 }
                 ball.x(-ball.width()/2);
                 ball.y(-ball.height()/2);
+                ball.speed_reset();
                 game_delay = SDL_GetTicks()+1000;
             }
             else if (collision & 0x02) {
@@ -594,6 +641,7 @@ void gameLoop(SDL_Window *window) {
                 }
                 ball.x(-ball.width()/2);
                 ball.y(-ball.height()/2);
+                ball.speed_reset();
                 game_delay = SDL_GetTicks()+1000;
             }
             else if(collision) {
