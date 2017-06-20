@@ -3,3 +3,7 @@ pong
 Pong.app/
 *.swp
 *.DS_Store
+*GRTAGS
+*GSYMS
+*GTAGS
+*GPATH
