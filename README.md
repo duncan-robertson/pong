@@ -1,6 +1,8 @@
 # Pong
 A simple pong game using SDL2, OpenGL, GLEW, and GLM
 
+![Screenshot](http://i.imgur.com/KnLiTUd.png)
+
 A make file is provided for Linux and OS X targets. You will need the development files for the libraries 
 listed above installed to compile the project. You can install these dependicies on ubuntu with the following command.
 
