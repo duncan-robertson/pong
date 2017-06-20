@@ -4,7 +4,7 @@ RES = shaders textures
 OSX = osx
 SOURCE = $(wildcard $(SDIR)/*.cpp)
 OBJS = $(patsubst $(SDIR)%.cpp, $(ODIR)%.o,$(SOURCE))
-CFLAGS = -Wall
+CFLAGS = -std=c++11 -Wall
 CC = gcc
 CXX = g++
 TARGET = pong
